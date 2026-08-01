@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRIX-UNIT — нормативная себестоимость</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0B1512;
+    --panel:#111C18;
+    --panel-raised:#16241F;
+    --ink:#F2F2F2;
+    --ink-soft:#7C9C90;
+    --line:#20302A;
+    --line-strong:#2E453C;
+    --accent:#00E38A;
+    --accent-dim:#00B874;
+    --danger:#FF6B57;
+    --radius:4px;
+  }
+  *{box-sizing:border-box;}
+  html{color-scheme:dark;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans', sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  header{border-bottom:2px solid var(--accent);padding-bottom:14px;margin-bottom:24px;}
+  .brand-row{display:flex;align-items:center;gap:14px;}
+  .brand-mark{width:38px;height:auto;flex-shrink:0;filter:drop-shadow(0 0 6px rgba(0,227,138,.35));}
+  .brand-eyebrow{font-family:'IBM Plex Mono', monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px;}
+  h1{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:clamp(24px,4vw,34px);margin:0;letter-spacing:-.01em;color:var(--ink);}
+  .brand-tagline{font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;}
+
+  .picker-panel{background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:20px;}
+  .picker-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:700px){.picker-grid{grid-template-columns:1fr;}}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field select{
+    width:100%;border:1px solid var(--line-strong);border-radius:var(--radius);
+    padding:10px 12px;font-family:'IBM Plex Mono', monospace;font-size:14px;background:var(--panel-raised);color:var(--ink);
+  }
+  .field input:focus, .field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,227,138,.15);}
+  .field .count{font-size:11px;color:var(--ink-soft);margin-top:5px;}
+
+  .combo-dropdown{
+    position:absolute;top:100%;left:0;right:0;margin-top:2px;
+    background:var(--panel-raised);border:1px solid var(--line-strong);border-radius:var(--radius);
+    max-height:280px;overflow-y:auto;z-index:30;display:none;
+    box-shadow:0 6px 16px rgba(27,35,31,.12);
+  }
+  .combo-dropdown.open{display:block;}
+  .combo-item{
+    padding:9px 12px;font-family:'IBM Plex Mono', monospace;font-size:13px;cursor:pointer;
+    border-bottom:1px solid var(--line);
+  }
+  .combo-item:last-child{border-bottom:none;}
+  .combo-item:hover, .combo-item.active{background:rgba(0,227,138,.1);}
+  .combo-item mark{background:var(--accent);color:#0B1512;font-weight:600;border-radius:2px;padding:0 1px;}
+  .combo-empty{padding:12px;font-size:13px;color:var(--ink-soft);}
+
+  .empty-state{
+    padding:60px 20px;text-align:center;color:var(--ink-soft);
+    border:1px dashed var(--line-strong);border-radius:var(--radius);
+    background:var(--panel-raised);
+  }
+  .empty-state .big{font-family:'Space Grotesk', sans-serif;font-size:20px;color:var(--ink);margin-bottom:6px;}
+
+  #resultArea{display:none;}
+
+  .flag{
+    display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--radius);
+    background:rgba(255,107,87,.1);border:1px solid rgba(255,107,87,.35);color:var(--danger);font-size:13px;margin-bottom:16px;
+  }
+
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:start;}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;}}
+  .panel{background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);}
+  .panel-head{padding:16px 20px;border-bottom:1px solid var(--line);}
+  .panel-head h2{font-family:'Space Grotesk', sans-serif;font-weight:600;font-size:17px;margin:0;}
+  .panel-head .sub{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+
+  table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono', monospace;font-size:12.5px;}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);}
+  th{font-family:'IBM Plex Sans', sans-serif;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);position:sticky;top:0;background:var(--panel-raised);}
+  th:first-child, td:first-child{text-align:left;}
+  td.miss{color:var(--danger);font-weight:600;}
+  .table-scroll{max-height:420px;overflow-y:auto;}
+  tfoot td{border-top:2px solid var(--accent);border-bottom:none;font-weight:600;background:var(--panel-raised);}
+
+  .cost-build{padding:20px 22px;}
+  .row-line{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line-strong);}
+  .row-line:last-of-type{border-bottom:none;}
+  .row-line .lbl{font-size:13px;}
+  .row-line .lbl .hint{display:block;font-size:11px;color:var(--ink-soft);font-weight:400;margin-top:2px;}
+  .row-line .val{font-family:'IBM Plex Mono', monospace;font-size:14px;font-weight:600;}
+  .row-line input{
+    width:130px;text-align:right;border:1px solid var(--line-strong);border-radius:var(--radius);
+    padding:7px 9px;font-family:'IBM Plex Mono', monospace;font-size:14px;background:var(--panel-raised);color:var(--ink);
+  }
+  .row-line input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,227,138,.15);}
+
+  .total-line{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-top:6px;padding-top:16px;border-top:2px solid var(--accent);
+  }
+  .total-line .lbl{font-family:'Space Grotesk', sans-serif;font-size:16px;font-weight:600;}
+  .total-line .val{font-family:'Space Grotesk', sans-serif;font-size:28px;font-weight:700;color:var(--accent);}
+
+  .opex-panel{margin-top:24px;}
+  .opex-group-title{
+    font-family:'IBM Plex Mono', monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-soft);padding:14px 22px 6px;border-top:1px solid var(--line);
+  }
+  .opex-item{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:6px 22px;
+  }
+  .opex-item .lbl{font-size:13px;flex:1;}
+  .opex-item .lbl .hint{font-size:11px;font-weight:500;margin-top:2px;}
+  .opex-item input{
+    width:150px;text-align:right;border:1px solid var(--line-strong);border-radius:var(--radius);
+    padding:6px 9px;font-family:'IBM Plex Mono', monospace;font-size:13px;background:var(--panel-raised);color:var(--ink);
+  }
+  .opex-item input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,227,138,.15);}
+
+  .price-panel{margin-top:20px;}
+  .price-panel .cost-build{padding-top:6px;}
+  .price-toggle{
+    display:flex;align-items:center;gap:8px;padding:14px 22px;cursor:pointer;user-select:none;
+    font-size:13px;color:var(--ink-soft);border-bottom:1px solid var(--line);
+  }
+  .price-toggle:hover{color:var(--ink);}
+  .price-body{display:none;}
+  .price-body.open{display:block;}
+  .headline-price{padding:18px 22px 4px;}
+  .headline-price .eyebrow{font-family:'IBM Plex Mono', monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 4px;}
+  .headline-price .price{font-family:'Space Grotesk', sans-serif;font-weight:700;font-size:30px;line-height:1;color:var(--accent);}
+  .headline-price .price-sub{font-size:12px;color:var(--ink-soft);margin-top:5px;}
+
+  .mode-switch{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+  .mode-btn{
+    font-family:'IBM Plex Mono', monospace;font-size:12.5px;letter-spacing:.02em;
+    background:var(--panel-raised);border:1px solid var(--line-strong);color:var(--ink-soft);
+    padding:9px 16px;border-radius:var(--radius);cursor:pointer;transition:all .15s;
+  }
+  .mode-btn:hover{color:var(--ink);border-color:var(--accent);}
+  .mode-btn.active{background:var(--accent);color:#0B1512;border-color:var(--accent);font-weight:600;}
+
+  .catalog-row td{vertical-align:middle;}
+  .catalog-price-input{
+    width:120px;text-align:right;border:1px solid var(--line-strong);border-radius:2px;
+    padding:5px 8px;font-family:'IBM Plex Mono', monospace;font-size:13px;background:var(--panel);color:var(--ink);
+  }
+  .catalog-price-input.saved{border-color:var(--accent);}
+  .catalog-save{cursor:pointer;color:var(--accent);font-weight:700;margin-left:8px;font-size:15px;}
+  .catalog-row.is-saved{background:rgba(0,227,138,.06);}
+
+  footer{margin-top:32px;font-size:11.5px;color:var(--ink-soft);text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand-row">
+      <img class="brand-mark" src="data:image/png;base64,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" alt="IRIX">
+      <div>
+        <p class="brand-eyebrow">IRIX · умные приложения для бизнеса</p>
+        <h1>IRIX-UNIT</h1>
+      </div>
+    </div>
+    <p class="brand-tagline">Нормативная себестоимость по спецификации · мебельное производство</p>
+    <p class="brand-tagline">Автор — Ирина Романова</p>
+    <p class="brand-tagline" id="storageStatus" style="color:var(--accent);">Загрузка сохранённых цен и расходов…</p>
+  </header>
+
+  <div class="mode-switch">
+    <button class="mode-btn active" id="modeCalcBtn">Калькулятор</button>
+    <button class="mode-btn" id="modeCatalogBtn">Справочник цен · заполнить недостающие (<span id="catalogMissingCount">…</span>)</button>
+    <button class="mode-btn" id="modeRevenueBtn">Выручка компании</button>
+    <button class="mode-btn" id="modeUploadBtn">Загрузка данных</button>
+  </div>
+
+  <div id="calcMode">
+  <div class="picker-panel">
+    <div class="picker-grid">
+      <div class="field" style="position:relative;">
+        <label for="productInput">Модель / изделие</label>
+        <input id="productInput" placeholder="Начните вводить название..." autocomplete="off">
+        <div id="productDropdown" class="combo-dropdown"></div>
+        <div class="count" id="productCount"></div>
+      </div>
+      <div class="field">
+        <label for="charSelect">Характеристика (цвет / вариант)</label>
+        <select id="charSelect" disabled><option>сначала выберите модель</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div id="emptyState" class="empty-state">
+    <div class="big">Выберите модель и характеристику</div>
+    <div>Ниже появится раскладка по материалам из развёрнутой спецификации</div>
+  </div>
+
+  <div id="resultArea">
+    <div id="missingFlag" class="flag" style="display:none;"></div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Раскладка по материалам</h2>
+          <div class="sub" id="productTitle"></div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Материал</th><th>Характеристика</th><th>Ед.</th><th>Кол-во</th><th>Цена, ₽</th><th>Сумма, ₽</th></tr>
+            </thead>
+            <tbody id="materialsBody"></tbody>
+            <tfoot>
+              <tr><td colspan="5">Итого материалы</td><td id="materialsTotal">—</td></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Себестоимость изделия</h2>
+          <div class="sub">Материалы + расходы по ОПиУ на единицу</div>
+        </div>
+        <div class="cost-build">
+          <div class="row-line">
+            <div class="lbl">Прямые затраты материалы<span class="hint">из спецификации, автоматически</span></div>
+            <div class="val" id="matVal">—</div>
+          </div>
+          <div class="row-line">
+            <div class="lbl">Расходы по ОПиУ на единицу<span class="hint">все статьи расходов ÷ плановый выпуск</span></div>
+            <div class="val" id="opexPerUnitVal">—</div>
+          </div>
+          <div class="row-line">
+            <div class="lbl">Услуги маркетплейса<span class="hint">% от цены МП — только если включён признак «Маркетплейс»</span></div>
+            <div class="val" id="mpCostVal">—</div>
+          </div>
+          <div class="total-line">
+            <span class="lbl">Итого себестоимость</span>
+            <span class="val" id="totalCostVal">—</span>
+          </div>
+          <div class="row-line" style="margin-top:8px;">
+            <div class="lbl">Итого на плановое количество<span class="hint" id="batchQtyHint">на 1 шт.</span></div>
+            <div class="val" id="batchTotalVal">—</div>
+          </div>
+        </div>
+
+        <div class="price-panel">
+          <div class="price-toggle" id="priceToggle">▴ Цена продажи</div>
+          <div class="price-body open" id="priceBody">
+            <div class="cost-build" style="padding-top:0;">
+              <div class="row-line">
+                <div class="lbl">Целевая маржа<span class="hint">доля прибыли в цене продажи</span></div>
+                <input type="number" id="marginInput" value="30" min="0" max="95" step="0.5">
+              </div>
+              <div class="row-line">
+                <div class="lbl">Коммерческие расходы<span class="hint">% от выручки — реклама, комиссии, доставка</span></div>
+                <input type="number" id="commInput" value="10" min="0" max="90" step="0.5">
+              </div>
+              <div class="row-line">
+                <div class="lbl">НДС</div>
+                <input type="number" id="vatInput" value="20" min="0" max="20" step="1">
+              </div>
+            </div>
+            <div class="headline-price">
+              <p class="eyebrow">Рекомендуемая цена продажи</p>
+              <div class="price" id="recPrice">—</div>
+              <p class="price-sub">с НДС · без НДС — <span id="recPriceNoVat">—</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel opex-panel">
+      <div class="panel-head">
+        <h2>Расходы по ОПиУ — в месяц, на весь объём</h2>
+        <div class="sub">Статьи предзаполнены по вашему отчёту — отредактируйте под текущий месяц</div>
+      </div>
+      <div class="cost-build" style="padding-bottom:6px;">
+        <div class="row-line">
+          <div class="lbl">Плановый общий выпуск<span class="hint">все модели вместе, шт/мес — на это число делятся все расходы</span></div>
+          <input type="number" id="volumeInput" value="1" min="1" step="1">
+        </div>
+        <div class="row-line">
+          <div class="lbl">Плановое количество этого изделия<span class="hint">сколько единиц этой модели идёт в выпуск, шт/мес</span></div>
+          <input type="number" id="itemQtyInput" value="1" min="0" step="1">
+        </div>
+        <div class="row-line">
+          <div class="lbl">Маркетплейс<span class="hint">изделие продаётся через маркетплейс — считать услуги МП как % от цены</span></div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="marketplaceCheck" style="width:18px;height:18px;cursor:pointer;accent-color:#00E38A;">
+            <span id="marketplaceCheckLabel" style="font-family:'IBM Plex Mono', monospace;font-size:13px;color:var(--danger);">не учитывается</span>
+          </label>
+        </div>
+        <div class="row-line" id="mpPriceRow">
+          <div class="lbl">Цена маркетплейса<span class="hint">цена, по которой изделие выставлено на МП — вводится вручную</span></div>
+          <input type="number" id="mpPriceInput" value="0" min="0" step="1">
+        </div>
+        <div class="row-line" id="mpPercentRow">
+          <div class="lbl">Услуги маркетплейса, %<span class="hint">комиссия + логистика + хранение + реклама и пр., одной ставкой от цены МП</span></div>
+          <input type="number" id="mpPercentInput" value="55" min="0" max="90" step="0.5">
+        </div>
+      </div>
+      <div id="opexGroups"></div>
+      <div class="cost-build" style="padding-top:10px;">
+        <div class="row-line">
+          <div class="lbl">Итого расходов ОПиУ в месяц</div>
+          <div class="val" id="opexTotalVal">—</div>
+        </div>
+        <div class="total-line" style="border-top:1px solid var(--line-strong);padding-top:10px;">
+          <span class="lbl" style="font-size:14px;">Расходы на единицу</span>
+          <span class="val" style="font-size:20px;" id="opexPerUnitVal2">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /calcMode -->
+
+  <div id="catalogMode" style="display:none;">
+    <div class="picker-panel">
+      <div class="field" style="position:relative;margin-bottom:0;">
+        <label for="catalogSearch">Поиск по справочнику</label>
+        <input id="catalogSearch" placeholder="Начните вводить название материала..." autocomplete="off">
+        <div class="count" id="catalogCount"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Недостающие цены — по частоте использования</h2>
+        <div class="sub">Заполните цену и нажмите ✓ — она сразу попадёт в общий справочник и подставится во все спецификации, где встречается этот материал</div>
+      </div>
+      <div class="table-scroll" style="max-height:640px;">
+        <table>
+          <thead>
+            <tr><th>Материал</th><th>Характеристика</th><th>Встречается раз</th><th>Цена, ₽</th></tr>
+          </thead>
+          <tbody id="catalogBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="revenueMode" style="display:none;">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Выручка компании — маркетплейсы и опт</h2>
+        <div class="sub">Услуги маркетплейса считаются от выручки маркетплейсов, остальные расходы — те же статьи ОПиУ, что и в калькуляторе</div>
+      </div>
+      <div class="cost-build">
+        <div class="row-line">
+          <div class="lbl">Общая выручка<span class="hint">за месяц, ₽</span></div>
+          <input type="number" id="revTotalInput" value="22264467" min="0" step="1000">
+        </div>
+        <div class="row-line">
+          <div class="lbl">Доля маркетплейсов<span class="hint">остальное — опт / прямые продажи</span></div>
+          <input type="number" id="revMpShareInput" value="77" min="0" max="100" step="0.5">
+        </div>
+        <div class="row-line">
+          <div class="lbl">Себестоимость<span class="hint">% от выручки — материалы на реализованный объём</span></div>
+          <input type="number" id="revCogsPctInput" value="16.7" min="0" max="100" step="0.1">
+        </div>
+      </div>
+      <div class="cost-build" style="padding-top:0;">
+        <div class="row-line">
+          <div class="lbl">Выручка маркетплейсов<span class="hint" id="revMpShareHint">77% от общей</span></div>
+          <div class="val" id="revMpVal">—</div>
+        </div>
+        <div class="row-line">
+          <div class="lbl">Выручка опт / прямые продажи<span class="hint" id="revOptShareHint">23% от общей</span></div>
+          <div class="val" id="revOptVal">—</div>
+        </div>
+      </div>
+      <div class="cost-build" style="padding-top:0;">
+        <div class="row-line">
+          <div class="lbl">Себестоимость<span class="hint" id="revCogsHint">16,7% от выручки</span></div>
+          <div class="val" id="revCogsVal">—</div>
+        </div>
+        <div class="row-line">
+          <div class="lbl">Услуги маркетплейса<span class="hint">выручка МП × ставка из калькулятора (<span id="revMpPctEcho">—</span>%)</span></div>
+          <div class="val" id="revMpCostVal">—</div>
+        </div>
+        <div class="row-line">
+          <div class="lbl">Все остальные расходы (общехозяйственные)<span class="hint">сумма статей ОПиУ — как в калькуляторе</span></div>
+          <div class="val" id="revOpexSummaryVal">—</div>
+        </div>
+      </div>
+
+      <div class="price-toggle" id="revOpexToggle">▾ Показать по статьям</div>
+      <div class="price-body" id="revOpexBody">
+        <p class="hint" style="color:var(--ink-soft);margin:12px 22px 0;">Те же значения, что и в таблице ОПиУ калькулятора — правки там сразу видны и здесь</p>
+        <table style="margin:8px 22px 16px;width:calc(100% - 44px);">
+          <tbody id="revOpexDetailBody"></tbody>
+          <tfoot>
+            <tr><td>Итого прочие расходы</td><td id="revOpexVal">—</td></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="cost-build">
+        <div class="row-line">
+          <div class="lbl">Итого расходы</div>
+          <div class="val" id="revExpVal">—</div>
+        </div>
+        <div class="total-line">
+          <span class="lbl">Прибыль</span>
+          <span class="val" id="revProfitVal">—</span>
+        </div>
+        <div class="row-line" style="margin-top:8px;">
+          <div class="lbl">Рентабельность<span class="hint">прибыль / выручка</span></div>
+          <div class="val" id="revMarginVal">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="uploadMode" style="display:none;">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Загрузка спецификаций и цен закупки</h2>
+        <div class="sub">Сейчас данные хранятся внутри этого файла (последняя загруженная версия). Загрузите новые выгрузки — они пересчитаются и сохранятся в общий кеш, доступный всем, кто открывает эту страницу.</div>
+      </div>
+      <div class="cost-build">
+        <div class="row-line" style="align-items:flex-start;">
+          <div class="lbl" style="flex:1;">Развёрнутая спецификация<span class="hint">файл вида «Универсальный отчёт — Выгрузка спецификаций», .xlsx</span></div>
+          <input type="file" id="bomFileInput" accept=".xlsx" style="max-width:260px;">
+        </div>
+        <div class="row-line" style="align-items:flex-start;">
+          <div class="lbl" style="flex:1;">Цены закупки<span class="hint">файл вида «Анализ закупок»: Номенклатура / Характеристика / Цена, .xlsx</span></div>
+          <input type="file" id="priceFileInput" accept=".xlsx" style="max-width:260px;">
+        </div>
+      </div>
+      <div class="cost-build" style="padding-top:0;">
+        <button class="mode-btn" id="recalcBtn" style="width:100%;padding:12px;font-size:13px;">Пересчитать и сохранить в общий кеш</button>
+        <p id="uploadStatus" class="hint" style="margin-top:12px;color:var(--ink-soft);">Нужны оба файла сразу — пересчёт разворачивает спецификацию до закупаемых материалов и сопоставляет с ценами.</p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:20px;">
+      <div class="panel-head">
+        <h2>Загрузка по ссылке</h2>
+        <div class="sub">Вместо выбора файла вручную — прямая ссылка на .xlsx (например, raw-ссылка на файл в GitHub). Работает только со ссылками с CORS-доступом: raw.githubusercontent.com подходит, обычная ссылка на просмотр в Google Диске — как правило, нет.</div>
+      </div>
+      <div class="cost-build">
+        <div class="row-line" style="align-items:flex-start;">
+          <div class="lbl" style="flex:1;">Ссылка на спецификацию<span class="hint">https://raw.githubusercontent.com/.../спецификация.xlsx</span></div>
+          <input type="text" id="bomUrlInput" placeholder="https://..." style="max-width:320px;">
+        </div>
+        <div class="row-line" style="align-items:flex-start;">
+          <div class="lbl" style="flex:1;">Ссылка на цены<span class="hint">https://raw.githubusercontent.com/.../цены.xlsx</span></div>
+          <input type="text" id="priceUrlInput" placeholder="https://..." style="max-width:320px;">
+        </div>
+      </div>
+      <div class="cost-build" style="padding-top:0;">
+        <button class="mode-btn" id="recalcUrlBtn" style="width:100%;padding:12px;font-size:13px;">Загрузить по ссылкам и сохранить</button>
+        <p id="uploadUrlStatus" class="hint" style="margin-top:12px;color:var(--ink-soft);"></p>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:20px;">
+      <div class="panel-head">
+        <h2>Экспорт снимка данных</h2>
+        <div class="sub">Скачать .xlsx с текущими правками цен, расходами ОПиУ и сводом по моделям — чтобы переслать, положить на Google Диск или свериться вручную</div>
+      </div>
+      <div class="cost-build">
+        <button class="mode-btn" id="exportBtn" style="width:100%;padding:12px;font-size:13px;">Скачать снимок данных (.xlsx)</button>
+        <p class="hint" style="margin-top:12px;color:var(--ink-soft);">
+          Автоматической выгрузки на Google Диск из статичного HTML-файла нет — Google требует OAuth-авторизацию, которую нельзя безопасно встроить в файл, открываемый в чужом браузере.
+          Но: пока файл открыт по одной и той же ссылке, все правки цен и расходов уже общие для всех, кто по ней заходит (см. статус выше) — Диск для этого не нужен.
+          Эта кнопка — для отдельного снимка на скачивание: сохраните .xlsx и загрузите на Диск вручную, если нужна версия «на всякий случай» или для отправки тем, у кого нет доступа к файлу.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer>IRIX-UNIT · данные — развёрнутая спецификация, прайс-лист закупок и ОПиУ · расчёты ориентировочные</footer>
+</div>
+
+<script type="application/json" id="unmatched-data">[]</script>
+<script type="application/json" id="product-data">{}</script>
+<script>
+let PRODUCTS = JSON.parse(document.getElementById('product-data').textContent);
+let UNMATCHED = JSON.parse(document.getElementById('unmatched-data').textContent); // [[material, char, count], ...]
+let productNames = Object.keys(PRODUCTS).sort((a,b)=>a.localeCompare(b,'ru'));
+function refreshProductNames(){ productNames = Object.keys(PRODUCTS).sort((a,b)=>a.localeCompare(b,'ru')); }
+
+const productInput = document.getElementById('productInput');
+const productDropdown = document.getElementById('productDropdown');
+const charSelect = document.getElementById('charSelect');
+const productCount = document.getElementById('productCount');
+const emptyState = document.getElementById('emptyState');
+const resultArea = document.getElementById('resultArea');
+
+function refreshProductCount(){
+  productCount.textContent = productNames.length > 0
+    ? productNames.length + ' моделей в базе'
+    : 'Данных пока нет — загрузите спецификацию и цены во вкладке «Загрузка данных»';
+}
+refreshProductCount();
+
+function fmt(n, dec=2){
+  if(n === null || n === undefined || !isFinite(n)) return '—';
+  return n.toLocaleString('ru-RU', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+function rub(n, dec=2){ return fmt(n,dec) + ' ₽'; }
+
+function norm(s){ return (s||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function highlight(name, query){
+  const n = norm(name), q = norm(query);
+  const idx = n.indexOf(q);
+  if(idx === -1 || !q) return escapeHtml(name);
+  return escapeHtml(name.slice(0,idx)) + '<mark>' + escapeHtml(name.slice(idx, idx+query.length)) + '</mark>' + escapeHtml(name.slice(idx+query.length));
+}
+
+function showDropdown(query){
+  const q = norm(query);
+  let matches;
+  if(!q){
+    matches = productNames.slice(0, 50);
+  } else {
+    matches = productNames.filter(n => norm(n).includes(q)).slice(0, 50);
+  }
+  productDropdown.innerHTML = '';
+  if(matches.length === 0){
+    productDropdown.innerHTML = '<div class="combo-empty">Ничего не найдено — попробуйте другую часть названия</div>';
+  } else {
+    matches.forEach(name => {
+      const item = document.createElement('div');
+      item.className = 'combo-item';
+      item.innerHTML = highlight(name, query);
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectProduct(name);
+      });
+      productDropdown.appendChild(item);
+    });
+  }
+  productDropdown.classList.add('open');
+}
+
+function hideDropdown(){
+  productDropdown.classList.remove('open');
+}
+
+function selectProduct(name){
+  productInput.value = name;
+  hideDropdown();
+  charSelect.innerHTML = '';
+  const chars = Object.keys(PRODUCTS[name]).sort((a,b)=>a.localeCompare(b,'ru'));
+  chars.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    charSelect.appendChild(opt);
+  });
+  charSelect.disabled = false;
+  renderResult(name, chars[0]);
+}
+
+productInput.addEventListener('input', () => {
+  if(!PRODUCTS[productInput.value]){
+    charSelect.disabled = true;
+    charSelect.innerHTML = '<option>сначала выберите модель</option>';
+    resultArea.style.display = 'none';
+    emptyState.style.display = 'block';
+  }
+  showDropdown(productInput.value);
+});
+productInput.addEventListener('focus', () => showDropdown(productInput.value));
+document.addEventListener('click', (e) => {
+  if(e.target !== productInput && !productDropdown.contains(e.target)) hideDropdown();
+});
+productInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){
+    const first = productDropdown.querySelector('.combo-item');
+    if(first){
+      const q = productInput.value;
+      const q2 = norm(q);
+      const match = q2 ? productNames.find(n => norm(n).includes(q2)) : productNames[0];
+      if(match) selectProduct(match);
+    }
+    e.preventDefault();
+  } else if(e.key === 'Escape'){
+    hideDropdown();
+  }
+});
+
+charSelect.addEventListener('change', () => {
+  renderResult(productInput.value, charSelect.value);
+});
+
+const OPEX_GROUPS = [
+  { title: 'Аналитика', items: [
+    ['Медосмотр', 42000.00],
+    ['Доставка товаров до покупателя', 182157.22],
+    ['Услуги по ремонту оборудования', 14440.00],
+    ['Бухгалтер', 202600.00],
+    ['Офисные', 3182.00],
+    ['Сайт', 12000.00],
+    ['Юридические услуги', 21000.00],
+    ['Доставка работников', 93500.00],
+    ['Дизайн', 4500.00],
+    ['Ремонт авто', 32894.28],
+    ['Электроэнергия', 144515.32],
+    ['Пожарная сигнализация', 5228.00],
+  ]},
+  { title: 'Операционные и прочие расходы', items: [
+    ['Реклама', 8556.00],
+    ['Маркетинг', 84000.00],
+    ['Услуги связи', 15205.07],
+    ['Почтовые расходы', 4658.08],
+    ['Заработная плата', 135000.00],
+    ['ГСМ', 40900.00],
+    ['Запчасти для ремонта оборудования', 266446.62],
+    ['Запчасти для ремонта авто', 122848.64],
+    ['Прочие расходы', 733549.91],
+    ['Проценты по кредитам', 21909.52],
+  ]},
+  { title: 'Дополнительно (после «Итого» в ОПиУ)', items: [
+    ['Заработная плата (доп., не проведено)', 3425284.00],
+    ['Страховые взносы', 449983.00],
+    ['Налог на АСУН', 160000.00],
+  ]},
+];
+
+const opexGroupsEl = document.getElementById('opexGroups');
+OPEX_GROUPS.forEach((group, gi) => {
+  const title = document.createElement('div');
+  title.className = 'opex-group-title';
+  title.textContent = group.title;
+  opexGroupsEl.appendChild(title);
+  group.items.forEach((item, ii) => {
+    const [label, value] = item;
+    const row = document.createElement('div');
+    row.className = 'opex-item';
+    row.innerHTML = `<div class="lbl">${label}</div><input type="number" class="opex-input" data-label="${label}" value="${value}" min="0" step="1">`;
+    opexGroupsEl.appendChild(row);
+  });
+});
+
+function isMarketplace(){
+  return document.getElementById('marketplaceCheck').checked;
+}
+
+function opexTotal(){
+  let sum = 0;
+  document.querySelectorAll('.opex-input').forEach(inp => { sum += parseFloat(inp.value) || 0; });
+  return sum;
+}
+
+function marketplaceCostPerUnit(){
+  if(!isMarketplace()) return 0;
+  const price = parseFloat(document.getElementById('mpPriceInput').value) || 0;
+  const pct = parseFloat(document.getElementById('mpPercentInput').value) || 0;
+  return price * pct / 100;
+}
+
+function refreshMarketplaceUI(){
+  const mp = isMarketplace();
+  document.getElementById('marketplaceCheckLabel').textContent = mp ? 'учитывается' : 'не учитывается';
+  document.getElementById('marketplaceCheckLabel').style.color = mp ? 'var(--accent)' : 'var(--danger)';
+  ['mpPriceRow', 'mpPercentRow'].forEach(id => {
+    document.getElementById(id).style.opacity = mp ? '1' : '.4';
+  });
+  document.getElementById('mpPriceInput').disabled = !mp;
+  document.getElementById('mpPercentInput').disabled = !mp;
+}
+
+
+function updateOpex(){
+  refreshMarketplaceUI();
+  const total = opexTotal();
+  const volume = Math.max(parseFloat(document.getElementById('volumeInput').value) || 1, 1);
+  const perUnit = total / volume;
+  document.getElementById('opexTotalVal').textContent = rub(total, 2);
+  document.getElementById('opexPerUnitVal2').textContent = rub(perUnit, 2);
+  document.getElementById('opexPerUnitVal').textContent = rub(perUnit, 2);
+  updateCost();
+}
+
+document.getElementById('volumeInput').addEventListener('input', updateOpex);
+document.getElementById('itemQtyInput').addEventListener('input', updateCost);
+document.getElementById('marketplaceCheck').addEventListener('change', updateOpex);
+opexGroupsEl.addEventListener('input', updateOpex);
+
+let currentData = null;
+let currentProductName = null;
+let currentCharKey = null;
+let priceOverrides = {};
+let opexValuesLoaded = false;
+
+function materialKey(material, char){
+  return norm(material) + '###' + norm(char || '');
+}
+
+function computeEffective(entry){
+  let total = 0, unmatched = 0;
+  const rows = entry.leaves.map(l => {
+    const material = l[0], char = l[1], unit = l[2], qty = l[3];
+    let price = l[4];
+    let manual = false;
+    if(price === null){
+      const key = materialKey(material, char);
+      if(priceOverrides.hasOwnProperty(key)){
+        price = priceOverrides[key].price;
+        manual = true;
+      }
+    }
+    if(price !== null){ total += qty * price; } else { unmatched += 1; }
+    return { material, char, unit, qty, price, manual };
+  });
+  return { rows, total, unmatched };
+}
+
+function renderResult(name, charKey){
+  const entry = PRODUCTS[name] && PRODUCTS[name][charKey];
+  if(!entry){
+    resultArea.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+  currentData = entry;
+  currentProductName = name;
+  currentCharKey = charKey;
+  emptyState.style.display = 'none';
+  resultArea.style.display = 'block';
+
+  document.getElementById('productTitle').textContent = name + (charKey !== '—' ? ' · ' + charKey : '');
+
+  const eff = computeEffective(entry);
+  currentData = { total: eff.total, unmatched: eff.unmatched };
+
+  const tbody = document.getElementById('materialsBody');
+  tbody.innerHTML = '';
+  eff.rows.forEach(row => {
+    const tr = document.createElement('tr');
+    const sum = row.price !== null ? row.qty * row.price : null;
+    let priceCell, sumCell;
+    if(row.price !== null){
+      priceCell = fmt(row.price) + (row.manual ? ' <span style="color:var(--accent);font-size:10px;">(вручную)</span>' : '');
+      sumCell = fmt(sum);
+    } else {
+      const key = materialKey(row.material, row.char);
+      priceCell = `<input type="number" class="price-fix-input" data-key="${escapeHtml(key)}" data-material="${escapeHtml(row.material)}" data-char="${escapeHtml(row.char||'')}" placeholder="цена" style="width:78px;text-align:right;background:var(--panel);border:1px solid var(--danger);border-radius:2px;padding:3px 5px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);"> <span class="price-fix-save" data-key="${escapeHtml(key)}" style="cursor:pointer;color:var(--accent);font-weight:600;" title="Сохранить цену в справочник">✓</span>`;
+      sumCell = '—';
+    }
+    tr.innerHTML = `
+      <td>${row.material}</td>
+      <td>${row.char || ''}</td>
+      <td>${row.unit || ''}</td>
+      <td>${fmt(row.qty,4)}</td>
+      <td class="${row.price===null?'miss':''}">${priceCell}</td>
+      <td class="${row.price===null?'miss':''}">${sumCell}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('materialsTotal').textContent = rub(eff.total);
+  document.getElementById('matVal').textContent = rub(eff.total);
+
+  const flag = document.getElementById('missingFlag');
+  if(eff.unmatched > 0){
+    flag.style.display = 'flex';
+    flag.innerHTML = '<span>\u26A0</span><span>' + eff.unmatched + ' материал(ов) без цены — впишите цену прямо в таблице и нажмите ✓, она сохранится в общий справочник.</span>';
+  } else {
+    flag.style.display = 'none';
+  }
+
+  loadProductCalc(name, charKey).then(() => updateOpex());
+}
+
+document.getElementById('materialsBody').addEventListener('click', (e) => {
+  if(e.target.classList.contains('price-fix-save')){
+    const key = e.target.dataset.key;
+    const input = document.querySelector(`.price-fix-input[data-key="${CSS.escape(key)}"]`);
+    const val = parseFloat(input.value);
+    if(!val || val <= 0){ input.focus(); return; }
+    priceOverrides[key] = { price: val, name: input.dataset.material, char: input.dataset.char || null };
+    savePriceOverrides();
+    renderResult(currentProductName, currentCharKey);
+  }
+});
+document.getElementById('materialsBody').addEventListener('keydown', (e) => {
+  if(e.target.classList.contains('price-fix-input') && e.key === 'Enter'){
+    const key = e.target.dataset.key;
+    const val = parseFloat(e.target.value);
+    if(!val || val <= 0) return;
+    priceOverrides[key] = { price: val, name: e.target.dataset.material, char: e.target.dataset.char || null };
+    savePriceOverrides();
+    renderResult(currentProductName, currentCharKey);
+  }
+});
+
+function updateCost(){
+  if(!currentData) return;
+  const volume = Math.max(parseFloat(document.getElementById('volumeInput').value) || 1, 1);
+  const opexPerUnit = opexTotal() / volume;
+  const mpCost = marketplaceCostPerUnit();
+  document.getElementById('mpCostVal').textContent = rub(mpCost);
+  const total = currentData.total + opexPerUnit + mpCost;
+  document.getElementById('totalCostVal').textContent = rub(total);
+
+  const itemQty = Math.max(parseFloat(document.getElementById('itemQtyInput').value) || 0, 0);
+  document.getElementById('batchTotalVal').textContent = rub(total * itemQty);
+  document.getElementById('batchQtyHint').textContent = 'на ' + fmt(itemQty,0) + ' шт.';
+
+  updatePrice(total);
+}
+
+function updatePrice(costTotal){
+  const margin = (parseFloat(document.getElementById('marginInput').value) || 0) / 100;
+  const comm = (parseFloat(document.getElementById('commInput').value) || 0) / 100;
+  const vat = (parseFloat(document.getElementById('vatInput').value) || 0) / 100;
+  const denom = 1 - margin - comm;
+  const recPrice = document.getElementById('recPrice');
+  const recPriceNoVat = document.getElementById('recPriceNoVat');
+  if(denom <= 0){
+    recPrice.textContent = '—';
+    recPriceNoVat.textContent = '—';
+    return;
+  }
+  const priceNoVat = costTotal / denom;
+  const priceVat = priceNoVat * (1+vat);
+  recPrice.textContent = rub(priceVat);
+  recPriceNoVat.textContent = rub(priceNoVat);
+}
+
+document.getElementById('marginInput').addEventListener('input', ()=>{ updateCost(); debouncedSaveCalc(); });
+document.getElementById('commInput').addEventListener('input', ()=>{ updateCost(); debouncedSaveCalc(); });
+document.getElementById('vatInput').addEventListener('input', ()=>{ updateCost(); debouncedSaveCalc(); });
+
+document.getElementById('priceToggle').addEventListener('click', () => {
+  const body = document.getElementById('priceBody');
+  const open = body.classList.toggle('open');
+  document.getElementById('priceToggle').textContent = (open?'\u25B4':'\u25BE') + ' Цена продажи';
+});
+
+document.getElementById('revOpexToggle').addEventListener('click', () => {
+  const body = document.getElementById('revOpexBody');
+  const open = body.classList.toggle('open');
+  document.getElementById('revOpexToggle').textContent = (open?'\u25B4':'\u25BE') + ' Показать по статьям';
+});
+
+// ---------- Persistent storage (shared — visible to everyone opening this file, incl. owner) ----------
+
+function debounce(fn, ms){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function setStorageStatus(text, ok){
+  const el = document.getElementById('storageStatus');
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = ok ? 'var(--accent)' : 'var(--danger)';
+}
+
+async function storageGet(key){
+  try{
+    const res = await window.storage.get(key, true);
+    return res ? JSON.parse(res.value) : null;
+  } catch(e){
+    return null;
+  }
+}
+async function storageSet(key, value){
+  try{
+    await window.storage.set(key, JSON.stringify(value), true);
+    return true;
+  } catch(e){
+    return false;
+  }
+}
+
+async function savePriceOverrides(){
+  setStorageStatus('Сохраняю цену в общий справочник…', true);
+  const ok = await storageSet('price-overrides', priceOverrides);
+  setStorageStatus(ok ? 'Цена сохранена — видна всем, включая собственника' : 'Не удалось сохранить цену', ok);
+}
+
+const debouncedSaveOpex = debounce(async () => {
+  const values = {};
+  document.querySelectorAll('.opex-input').forEach(inp => { values[inp.dataset.label] = parseFloat(inp.value) || 0; });
+  setStorageStatus('Сохраняю расходы ОПиУ…', true);
+  const ok = await storageSet('opex-values', values);
+  setStorageStatus(ok ? 'Расходы ОПиУ сохранены в общий кеш' : 'Не удалось сохранить расходы', ok);
+}, 500);
+
+const debouncedSaveGlobal = debounce(async () => {
+  const settings = {
+    volume: document.getElementById('volumeInput').value,
+    marketplace: document.getElementById('marketplaceCheck').checked,
+    mpPercent: document.getElementById('mpPercentInput').value,
+  };
+  await storageSet('global-settings', settings);
+}, 500);
+
+const debouncedSaveCalc = debounce(async () => {
+  if(!currentProductName) return;
+  const key = 'calc:' + materialKey(currentProductName, currentCharKey);
+  const calc = {
+    itemQty: document.getElementById('itemQtyInput').value,
+    margin: document.getElementById('marginInput').value,
+    comm: document.getElementById('commInput').value,
+    vat: document.getElementById('vatInput').value,
+    mpPrice: document.getElementById('mpPriceInput').value,
+  };
+  await storageSet(key, calc);
+}, 500);
+
+async function loadProductCalc(name, charKey){
+  const key = 'calc:' + materialKey(name, charKey);
+  const calc = await storageGet(key);
+  if(calc){
+    if(calc.itemQty !== undefined) document.getElementById('itemQtyInput').value = calc.itemQty;
+    if(calc.margin !== undefined) document.getElementById('marginInput').value = calc.margin;
+    if(calc.comm !== undefined) document.getElementById('commInput').value = calc.comm;
+    if(calc.vat !== undefined) document.getElementById('vatInput').value = calc.vat;
+    document.getElementById('mpPriceInput').value = calc.mpPrice !== undefined ? calc.mpPrice : 0;
+  } else {
+    document.getElementById('itemQtyInput').value = 1;
+    document.getElementById('marginInput').value = 30;
+    document.getElementById('commInput').value = 10;
+    document.getElementById('vatInput').value = 20;
+    document.getElementById('mpPriceInput').value = 0;
+  }
+}
+
+opexGroupsEl.addEventListener('input', debouncedSaveOpex);
+document.getElementById('volumeInput').addEventListener('input', debouncedSaveGlobal);
+document.getElementById('marketplaceCheck').addEventListener('change', debouncedSaveGlobal);
+document.getElementById('mpPercentInput').addEventListener('input', debouncedSaveGlobal);
+document.getElementById('itemQtyInput').addEventListener('input', debouncedSaveCalc);
+document.getElementById('mpPriceInput').addEventListener('input', debouncedSaveCalc);
+document.getElementById('mpPriceInput').addEventListener('input', updateCost);
+document.getElementById('mpPercentInput').addEventListener('input', updateCost);
+
+async function initApp(){
+  setStorageStatus('Загрузка сохранённых цен и расходов…', true);
+
+  const uploadedProducts = await storageGet('uploaded-products');
+  const uploadedUnmatched = await storageGet('uploaded-unmatched');
+  if(uploadedProducts && uploadedUnmatched && Object.keys(uploadedProducts).length > 0){
+    PRODUCTS = uploadedProducts;
+    UNMATCHED = uploadedUnmatched;
+    refreshProductNames();
+    refreshProductCount();
+    document.getElementById('uploadStatus').textContent = 'Сейчас используются данные из последней загрузки в общий кеш (' + Object.keys(PRODUCTS).length + ' моделей).';
+    document.getElementById('uploadStatus').style.color = 'var(--ink-soft)';
+  } else {
+    // nobody has loaded data into shared storage yet this session — try the remembered default source, if any
+    const defaults = await storageGet('default-source-urls');
+    if(defaults && defaults.bomUrl && defaults.priceUrl){
+      document.getElementById('bomUrlInput').value = defaults.bomUrl;
+      document.getElementById('priceUrlInput').value = defaults.priceUrl;
+      setStorageStatus('Данных в общем кеше ещё нет — подтягиваю их по сохранённой ссылке…', true);
+      try{
+        const [bomResp, priceResp] = await Promise.all([fetch(defaults.bomUrl), fetch(defaults.priceUrl)]);
+        if(!bomResp.ok) throw new Error('спецификация: HTTP ' + bomResp.status);
+        if(!priceResp.ok) throw new Error('цены: HTTP ' + priceResp.status);
+        const [bomBuf, priceBuf] = await Promise.all([bomResp.arrayBuffer(), priceResp.arrayBuffer()]);
+        await processAndSaveWorkbooks(bomBuf, priceBuf, document.getElementById('uploadUrlStatus'));
+        setStorageStatus('Данные подтянуты автоматически по сохранённой ссылке (' + Object.keys(PRODUCTS).length + ' моделей)', true);
+      } catch(err){
+        setStorageStatus('Не удалось автоматически подтянуть данные по сохранённой ссылке — откройте «Загрузка данных».', false);
+      }
+    }
+  }
+
+  const overrides = await storageGet('price-overrides');
+  if(overrides){
+    priceOverrides = {};
+    Object.entries(overrides).forEach(([k, v]) => {
+      priceOverrides[k] = (typeof v === 'number') ? { price: v, name: null, char: null } : v;
+    });
+  }
+
+  const opexValues = await storageGet('opex-values');
+  if(opexValues){
+    document.querySelectorAll('.opex-input').forEach(inp => {
+      if(opexValues[inp.dataset.label] !== undefined) inp.value = opexValues[inp.dataset.label];
+    });
+  }
+
+  const globalSettings = await storageGet('global-settings');
+  if(globalSettings){
+    if(globalSettings.volume !== undefined) document.getElementById('volumeInput').value = globalSettings.volume;
+    if(globalSettings.marketplace !== undefined) document.getElementById('marketplaceCheck').checked = globalSettings.marketplace;
+    if(globalSettings.mpPercent !== undefined) document.getElementById('mpPercentInput').value = globalSettings.mpPercent;
+  }
+
+  setStorageStatus('Цены и расходы загружены из общего кеша', true);
+  updateOpex();
+  renderCatalog();
+}
+
+// ---------- Price catalog: fill in every missing price in one place ----------
+
+function updateCatalogMissingCount(){
+  const remaining = UNMATCHED.filter(u => !priceOverrides.hasOwnProperty(materialKey(u[0], u[1]))).length;
+  document.getElementById('catalogMissingCount').textContent = remaining;
+}
+
+function renderCatalog(query){
+  const tbody = document.getElementById('catalogBody');
+  const q = norm(query || '');
+  let rows = UNMATCHED;
+  if(q){
+    rows = UNMATCHED.filter(u => norm(u[0]).includes(q) || norm(u[1]||'').includes(q));
+  }
+  tbody.innerHTML = '';
+  rows.forEach(([material, char, count]) => {
+    const key = materialKey(material, char);
+    const saved = priceOverrides.hasOwnProperty(key);
+    const tr = document.createElement('tr');
+    tr.className = 'catalog-row' + (saved ? ' is-saved' : '');
+    tr.innerHTML = `
+      <td>${escapeHtml(material)}</td>
+      <td>${escapeHtml(char || '')}</td>
+      <td>${count}</td>
+      <td>
+        <input type="number" class="catalog-price-input${saved?' saved':''}" data-key="${escapeHtml(key)}"
+               data-material="${escapeHtml(material)}" data-char="${escapeHtml(char||'')}"
+               value="${saved ? priceOverrides[key].price : ''}" placeholder="цена" min="0" step="1">
+        <span class="catalog-save" data-key="${escapeHtml(key)}" title="Сохранить в справочник">✓</span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('catalogCount').textContent = rows.length + ' из ' + UNMATCHED.length + ' позиций';
+  updateCatalogMissingCount();
+}
+
+async function saveCatalogPrice(key, input){
+  const val = parseFloat(input.value);
+  if(!val || val <= 0){ input.focus(); return; }
+  priceOverrides[key] = { price: val, name: input.dataset.material, char: input.dataset.char || null };
+  await savePriceOverrides();
+  input.classList.add('saved');
+  input.closest('tr').classList.add('is-saved');
+  updateCatalogMissingCount();
+  // keep material calculator in sync if the same item is currently on screen
+  if(currentProductName) renderResult(currentProductName, currentCharKey);
+}
+
+document.getElementById('catalogBody').addEventListener('click', (e) => {
+  if(e.target.classList.contains('catalog-save')){
+    const key = e.target.dataset.key;
+    const input = document.querySelector(`.catalog-price-input[data-key="${CSS.escape(key)}"]`);
+    saveCatalogPrice(key, input);
+  }
+});
+document.getElementById('catalogBody').addEventListener('keydown', (e) => {
+  if(e.target.classList.contains('catalog-price-input') && e.key === 'Enter'){
+    saveCatalogPrice(e.target.dataset.key, e.target);
+  }
+});
+
+let catalogSearchDebounced = debounce((q) => renderCatalog(q), 150);
+document.getElementById('catalogSearch').addEventListener('input', (e) => catalogSearchDebounced(e.target.value));
+
+const MODES = ['calc', 'catalog', 'revenue', 'upload'];
+function switchMode(active){
+  MODES.forEach(m => {
+    document.getElementById(m + 'Mode').style.display = (m === active) ? '' : 'none';
+    document.getElementById('mode' + m[0].toUpperCase() + m.slice(1) + 'Btn').classList.toggle('active', m === active);
+  });
+  if(active === 'revenue') updateRevenue();
+}
+document.getElementById('modeCalcBtn').addEventListener('click', () => switchMode('calc'));
+document.getElementById('modeCatalogBtn').addEventListener('click', () => switchMode('catalog'));
+document.getElementById('modeRevenueBtn').addEventListener('click', () => switchMode('revenue'));
+document.getElementById('modeUploadBtn').addEventListener('click', () => switchMode('upload'));
+
+// ---------- Company revenue: marketplace vs wholesale split ----------
+
+function renderRevenueOpexDetail(){
+  const tbody = document.getElementById('revOpexDetailBody');
+  tbody.innerHTML = '';
+  OPEX_GROUPS.forEach(group => {
+    const trTitle = document.createElement('tr');
+    trTitle.innerHTML = `<td colspan="2" style="text-align:left;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);padding-top:14px;">${group.title}</td>`;
+    tbody.appendChild(trTitle);
+    group.items.forEach(([label]) => {
+      const input = document.querySelector(`.opex-input[data-label="${CSS.escape(label)}"]`);
+      const val = input ? (parseFloat(input.value) || 0) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td style="text-align:left;">${escapeHtml(label)}</td><td>${fmt(val)}</td>`;
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function updateRevenue(){
+  renderRevenueOpexDetail();
+  const total = parseFloat(document.getElementById('revTotalInput').value) || 0;
+  const mpShare = Math.min(Math.max(parseFloat(document.getElementById('revMpShareInput').value) || 0, 0), 100);
+  const optShare = 100 - mpShare;
+  const mpRevenue = total * mpShare / 100;
+  const optRevenue = total * optShare / 100;
+
+  document.getElementById('revMpShareHint').textContent = fmt(mpShare,1) + '% от общей';
+  document.getElementById('revOptShareHint').textContent = fmt(optShare,1) + '% от общей';
+  document.getElementById('revMpVal').textContent = rub(mpRevenue);
+  document.getElementById('revOptVal').textContent = rub(optRevenue);
+
+  const cogsPct = parseFloat(document.getElementById('revCogsPctInput').value) || 0;
+  const cogs = total * cogsPct / 100;
+  document.getElementById('revCogsHint').textContent = fmt(cogsPct,1) + '% от выручки';
+  document.getElementById('revCogsVal').textContent = rub(cogs);
+
+  const mpPct = parseFloat(document.getElementById('mpPercentInput').value) || 0;
+  const mpCost = mpRevenue * mpPct / 100;
+  const otherExp = opexTotal();
+  const totalExp = cogs + mpCost + otherExp;
+  const profit = total - totalExp;
+
+  document.getElementById('revMpPctEcho').textContent = fmt(mpPct,1);
+  document.getElementById('revMpCostVal').textContent = rub(mpCost);
+  document.getElementById('revOpexVal').textContent = rub(otherExp);
+  document.getElementById('revOpexSummaryVal').textContent = rub(otherExp);
+  document.getElementById('revExpVal').textContent = rub(totalExp);
+  document.getElementById('revProfitVal').textContent = rub(profit);
+  document.getElementById('revProfitVal').style.color = profit >= 0 ? 'var(--accent)' : 'var(--danger)';
+  document.getElementById('revMarginVal').textContent = total > 0 ? fmt(profit/total*100,1) + '%' : '—';
+}
+
+document.getElementById('revTotalInput').addEventListener('input', updateRevenue);
+document.getElementById('revMpShareInput').addEventListener('input', updateRevenue);
+document.getElementById('revCogsPctInput').addEventListener('input', updateRevenue);
+
+// ---------- Upload & recompute specifications + prices in the browser ----------
+
+function normU(s){ return norm(s); }
+
+function readSheetRows(workbook){
+  const ws = workbook.Sheets[workbook.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+}
+
+function buildPriceIndex(priceRows){
+  const priceExact = new Map();   // key -> {price, name, char}
+  const priceByName = new Map();  // norm(name) -> [{char, price, name}]
+  for(let i = 1; i < priceRows.length; i++){
+    const r = priceRows[i];
+    if(!r || r[0] === null || r[0] === undefined) continue;
+    const name = r[0], char = r[1], price = r[2];
+    if(price === null || price === undefined || price === '') continue;
+    const key = normU(name) + '###' + normU(char || '');
+    priceExact.set(key, { price: Number(price), name, char });
+    if(!priceByName.has(normU(name))) priceByName.set(normU(name), []);
+    priceByName.get(normU(name)).push({ char, price: Number(price), name });
+  }
+  return { priceExact, priceByName };
+}
+
+function buildBomIndex(bomRows){
+  const bomExact = new Map();   // key -> [[unit, qty, compChar, compName], ...]
+  const bomByName = new Map();  // norm(name) -> [{char, name}]
+  let curKey = null;
+  for(let i = 7; i < bomRows.length; i++){
+    const r = bomRows[i];
+    if(!r) continue;
+    const c6 = r[6];
+    if(c6 === null || c6 === undefined || c6 === ''){
+      if(r[0] === null || r[0] === undefined || r[0] === '') continue;
+      const name = r[0], char = r[3];
+      const key = normU(name) + '###' + normU(char || '');
+      curKey = key;
+      if(!bomExact.has(key)) bomExact.set(key, []);
+      if(!bomByName.has(normU(name))) bomByName.set(normU(name), []);
+      bomByName.get(normU(name)).push({ char, name });
+    } else {
+      if(curKey === null) continue;
+      const unit = r[0], qty = (typeof r[3] === 'number') ? r[3] : 1, compChar = r[5], compName = r[6];
+      bomExact.get(curKey).push([unit, qty, compChar, compName]);
+    }
+  }
+  return { bomExact, bomByName };
+}
+
+function computeFromWorkbooks(bomRows, priceRows, onProgress){
+  const { priceExact, priceByName } = buildPriceIndex(priceRows);
+  const { bomExact, bomByName } = buildBomIndex(bomRows);
+
+  function findPrice(name, char){
+    const key = normU(name) + '###' + normU(char || '');
+    if(priceExact.has(key)) return priceExact.get(key);
+    const cands = priceByName.get(normU(name));
+    if(cands && cands.length === 1) return cands[0];
+    return null;
+  }
+  function findBom(name, char){
+    const key = normU(name) + '###' + normU(char || '');
+    if(bomExact.has(key)) return key;
+    const cands = bomByName.get(normU(name));
+    if(cands && cands.length){
+      const uniqChars = new Set(cands.map(c => normU(c.char)));
+      if(uniqChars.size === 1) return normU(name) + '###' + normU(cands[0].char || '');
+      const noChar = cands.find(c => c.char === null || c.char === undefined);
+      if(noChar) return normU(name) + '###' + normU(noChar.char || '');
+    }
+    return null;
+  }
+
+  const unmatchedMap = new Map(); // key -> {name, char, count}
+  const MAX_DEPTH = 25;
+
+  function explode(name, char, unit, qtyMult, depth, path, leaves){
+    if(depth > MAX_DEPTH) return;
+    const pr = findPrice(name, char);
+    if(pr){
+      leaves.push({ material: pr.name, char: pr.char, unit, qty: qtyMult, price: pr.price });
+      return;
+    }
+    const bkey = findBom(name, char);
+    if(bkey && !path.has(bkey) && bomExact.get(bkey).length){
+      for(const [u2, qty, compChar, compName] of bomExact.get(bkey)){
+        const q = (typeof qty === 'number') ? qty : 1;
+        const newPath = new Set(path); newPath.add(bkey);
+        explode(compName, compChar, u2, qtyMult * q, depth + 1, newPath, leaves);
+      }
+      return;
+    }
+    const ukey = normU(name) + '###' + normU(char || '');
+    if(!unmatchedMap.has(ukey)) unmatchedMap.set(ukey, { name, char, count: 0 });
+    unmatchedMap.get(ukey).count += 1;
+    leaves.push({ material: name, char, unit, qty: qtyMult, price: null });
+  }
+
+  const products = {};
+  let processed = 0;
+  for(const [nkey, comps] of bomExact.entries()){
+    processed++;
+    if(onProgress && processed % 200 === 0) onProgress(processed, bomExact.size);
+    if(!comps.length) continue;
+    const sepIdx = nkey.indexOf('###');
+    const nname = nkey.slice(0, sepIdx);
+    const variants = bomByName.get(nname) || [];
+    const origName = variants.length ? variants[0].name : nname;
+    let origChar = null;
+    for(const v of variants){ if(normU(v.char) === nkey.slice(sepIdx+3)) { origChar = v.char; break; } }
+
+    const leaves = [];
+    for(const [unit, qty, compChar, compName] of comps){
+      const q = (typeof qty === 'number') ? qty : 1;
+      explode(compName, compChar, unit, q, 1, new Set([nkey]), leaves);
+    }
+
+    const agg = new Map();
+    const order = [];
+    for(const l of leaves){
+      const k = normU(l.material) + '###' + normU(l.char || '') + '###' + normU(l.unit || '');
+      if(!agg.has(k)){ agg.set(k, {...l}); order.push(k); }
+      else agg.get(k).qty += l.qty;
+    }
+    const aggLeaves = order.map(k => agg.get(k));
+    let total = 0, unmatchedCount = 0;
+    aggLeaves.forEach(l => { if(l.price !== null) total += l.qty * l.price; else unmatchedCount++; });
+
+    const charLabel = origChar || '—';
+    if(!products[origName]) products[origName] = {};
+    products[origName][charLabel] = {
+      leaves: aggLeaves.map(l => [l.material, l.char, l.unit, Math.round(l.qty*1e6)/1e6, l.price]),
+      total: Math.round(total*100)/100,
+      unmatched: unmatchedCount,
+    };
+  }
+
+  const unmatchedList = Array.from(unmatchedMap.values())
+    .sort((a,b) => b.count - a.count)
+    .map(u => [u.name, u.char, u.count]);
+
+  return { products, unmatchedList };
+}
+
+async function processAndSaveWorkbooks(bomBuf, priceBuf, statusEl){
+  statusEl.style.color = 'var(--ink-soft)';
+  statusEl.textContent = 'Читаю файлы…';
+  const bomWb = XLSX.read(bomBuf, { type: 'array' });
+  const priceWb = XLSX.read(priceBuf, { type: 'array' });
+  const bomRows = readSheetRows(bomWb);
+  const priceRows = readSheetRows(priceWb);
+
+  statusEl.textContent = 'Разворачиваю спецификацию и сопоставляю цены — это может занять до минуты…';
+  await new Promise(r => setTimeout(r, 30)); // let the status text paint before the heavy loop
+
+  const { products, unmatchedList } = computeFromWorkbooks(bomRows, priceRows);
+
+  PRODUCTS = products;
+  UNMATCHED = unmatchedList;
+  refreshProductNames();
+  refreshProductCount();
+
+  statusEl.textContent = 'Сохраняю в общий кеш…';
+  const ok1 = await storageSet('uploaded-products', PRODUCTS);
+  const ok2 = await storageSet('uploaded-unmatched', UNMATCHED);
+
+  renderCatalog();
+  productInput.value = '';
+  charSelect.disabled = true;
+  charSelect.innerHTML = '<option>сначала выберите модель</option>';
+  resultArea.style.display = 'none';
+  emptyState.style.display = 'block';
+
+  const nProducts = Object.keys(PRODUCTS).length;
+  statusEl.style.color = (ok1 && ok2) ? 'var(--accent)' : 'var(--danger)';
+  statusEl.textContent = (ok1 && ok2)
+    ? `Готово: ${nProducts} моделей, ${UNMATCHED.length} позиций без цены. Сохранено в общий кеш — увидят все, кто откроет файл.`
+    : `Пересчитано (${nProducts} моделей), но сохранить в общий кеш не удалось — данные останутся только в этой вкладке.`;
+}
+
+document.getElementById('recalcBtn').addEventListener('click', async () => {
+  const bomFile = document.getElementById('bomFileInput').files[0];
+  const priceFile = document.getElementById('priceFileInput').files[0];
+  const statusEl = document.getElementById('uploadStatus');
+  if(!bomFile || !priceFile){
+    statusEl.textContent = 'Нужны оба файла — и спецификация, и цены закупки.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  try{
+    const [bomBuf, priceBuf] = await Promise.all([bomFile.arrayBuffer(), priceFile.arrayBuffer()]);
+    await processAndSaveWorkbooks(bomBuf, priceBuf, statusEl);
+  } catch(err){
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Ошибка при обработке файлов: ' + err.message + '. Проверьте, что это те же форматы выгрузки, что и раньше.';
+  }
+});
+
+document.getElementById('recalcUrlBtn').addEventListener('click', async () => {
+  const bomUrl = document.getElementById('bomUrlInput').value.trim();
+  const priceUrl = document.getElementById('priceUrlInput').value.trim();
+  const statusEl = document.getElementById('uploadUrlStatus');
+  if(!bomUrl || !priceUrl){
+    statusEl.textContent = 'Нужны обе ссылки — и на спецификацию, и на цены закупки.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  try{
+    statusEl.style.color = 'var(--ink-soft)';
+    statusEl.textContent = 'Скачиваю файлы по ссылкам…';
+    const [bomResp, priceResp] = await Promise.all([fetch(bomUrl), fetch(priceUrl)]);
+    if(!bomResp.ok) throw new Error('спецификация: HTTP ' + bomResp.status);
+    if(!priceResp.ok) throw new Error('цены: HTTP ' + priceResp.status);
+    const [bomBuf, priceBuf] = await Promise.all([bomResp.arrayBuffer(), priceResp.arrayBuffer()]);
+    await processAndSaveWorkbooks(bomBuf, priceBuf, statusEl);
+    // remember these URLs so the app can self-load next time, for anyone, with no manual step
+    await storageSet('default-source-urls', { bomUrl, priceUrl });
+    statusEl.textContent += ' Ссылки запомнены как источник по умолчанию — при следующем открытии файла (у вас и у других) данные подтянутся сами, без этой кнопки.';
+  } catch(err){
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = 'Не удалось скачать по ссылке: ' + err.message + '. Часто причина — CORS: ссылка должна отдавать файл напрямую (например, raw.githubusercontent.com), а не страницу просмотра.';
+  }
+});
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+
+  const priceRows = [['Материал', 'Характеристика', 'Цена, ₽ (вручную)']];
+  Object.values(priceOverrides).forEach(o => {
+    priceRows.push([o.name, o.char || '', o.price]);
+  });
+  const wsPrice = XLSX.utils.aoa_to_sheet(priceRows);
+  XLSX.utils.book_append_sheet(wb, wsPrice, 'Прайс-правки');
+
+  const opexRows = [['Статья', 'Сумма, ₽/мес']];
+  document.querySelectorAll('.opex-input').forEach(inp => {
+    opexRows.push([inp.dataset.label, parseFloat(inp.value) || 0]);
+  });
+  opexRows.push(['Плановый общий выпуск, шт/мес', parseFloat(document.getElementById('volumeInput').value) || 0]);
+  const wsOpex = XLSX.utils.aoa_to_sheet(opexRows);
+  XLSX.utils.book_append_sheet(wb, wsOpex, 'Расходы ОПиУ');
+
+  const modelRows = [['Изделие', 'Характеристика', 'Себестоимость материалов, ₽', 'Материалов без цены, шт']];
+  Object.keys(PRODUCTS).sort((a,b)=>a.localeCompare(b,'ru')).forEach(name => {
+    Object.keys(PRODUCTS[name]).forEach(char => {
+      const eff = computeEffective(PRODUCTS[name][char]);
+      modelRows.push([name, char === '—' ? '' : char, Math.round(eff.total*100)/100, eff.unmatched]);
+    });
+  });
+  const wsModels = XLSX.utils.aoa_to_sheet(modelRows);
+  XLSX.utils.book_append_sheet(wb, wsModels, 'Модели');
+
+  const stamp = new Date().toISOString().slice(0,16).replace('T','_').replace(':','-');
+  XLSX.writeFile(wb, `IRIX-UNIT_снимок_${stamp}.xlsx`);
+});
+
+initApp();
+
+</script>
+</body>
+</html>
